@@ -1,0 +1,72 @@
+graph TD
+    subgraph Client Layer
+        A[Client App]
+    end
+
+    subgraph Gateway Layer
+        B[API Gateway]
+    end
+
+    subgraph Auth
+        C[Auth Service]
+    end
+
+    subgraph Services
+        D[User Service]
+        E[Order Service]
+        F[Product Catalog Service]
+        G[Inventory Service]
+        H[Payment Service]
+        I[Notification Service]
+    end
+
+    subgraph Infra
+        J[(RabbitMQ)]
+        K[(Consul)]
+        L[(Prometheus)]
+        M[(ELK Stack)]
+    end
+
+    subgraph Databases
+        DDB[(UserDB)]
+        EDB[(OrderDB)]
+        FDB[(ProductDB)]
+        GDB[(InventoryDB)]
+        HDB[(PaymentDB)]
+    end
+
+    A --> B
+    B --> C
+    B --> D
+    B --> E
+    B --> F
+    B --> G
+    B --> H
+    B --> I
+
+    D --> DDB
+    E --> EDB
+    F --> FDB
+    G --> GDB
+    H --> HDB
+
+    D --> J
+    E --> J
+    F --> J
+    G --> J
+    H --> J
+
+    D --> K
+    E --> K
+    F --> K
+    G --> K
+
+    D --> L
+    E --> L
+    F --> L
+    G --> L
+    H --> L
+
+    D --> M
+    E --> M
+    F --> M

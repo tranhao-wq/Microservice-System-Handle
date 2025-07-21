@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chi tiết kiến trúc Microservice</title>
+  <style>
+    body { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: white;
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    canvas { 
+      background: #ffffff;
+      display: block; 
+      margin: 0 auto;
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+    
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .legend-item {
+      background: rgba(255,255,255,0.9);
+      padding: 10px 15px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 2px solid #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏗️ Kiến trúc Microservice</h1>
+    <canvas id="microserviceChart" width="1400" height="900"></canvas>
+    
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background: linear-gradient(45deg, #2196F3, #21CBF3);"></div>
+        <span>Client Layer</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: linear-gradient(45deg, #4CAF50, #8BC34A);"></div>
+        <span>Gateway & Load Balancer</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: linear-gradient(45deg, #FF9800, #FFC107);"></div>
+        <span>Business Services</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: linear-gradient(45deg, #9C27B0, #E91E63);"></div>
+        <span>Database Layer</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: linear-gradient(45deg, #607D8B, #795548);"></div>
+        <span>Infrastructure Services</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('microserviceChart');
+    const ctx = canvas.getContext('2d');
+    
+    // Enhanced service definitions with better positioning
+    const services = [
+      // Client Layer
+      { name: 'Web Client', x: 100, y: 50, w: 180, h: 60, type: 'client', icon: '🌐' },
+      { name: 'Mobile App', x: 320, y: 50, w: 180, h: 60, type: 'client', icon: '📱' },
+      { name: 'Admin Panel', x: 540, y: 50, w: 180, h: 60, type: 'client', icon: '⚙️' },
+      
+      // Gateway Layer
+      { name: 'Load Balancer', x: 320, y: 150, w: 180, h: 60, type: 'gateway', icon: '⚖️' },
+      { name: 'API Gateway', x: 320, y: 240, w: 180, h: 60, type: 'gateway', icon: '🚪' },
+      
+      // Business Services Layer
+      { name: 'Auth Service', x: 80, y: 360, w: 160, h: 70, type: 'service', icon: '🔐' },
+      { name: 'User Service', x: 270, y: 360, w: 160, h: 70, type: 'service', icon: '👤' },
+      { name: 'Product Service', x: 460, y: 360, w: 160, h: 70, type: 'service', icon: '📦' },
+      { name: 'Order Service', x: 650, y: 360, w: 160, h: 70, type: 'service', icon: '🛒' },
+      { name: 'Payment Service', x: 840, y: 360, w: 160, h: 70, type: 'service', icon: '💳' },
+      { name: 'Inventory Service', x: 1030, y: 360, w: 160, h: 70, type: 'service', icon: '📊' },
+      
+      // Database Layer
+      { name: 'Auth DB\n(PostgreSQL)', x: 80, y: 480, w: 160, h: 60, type: 'database', icon: '🗄️' },
+      { name: 'User DB\n(PostgreSQL)', x: 270, y: 480, w: 160, h: 60, type: 'database', icon: '🗄️' },
+      { name: 'Product DB\n(MongoDB)', x: 460, y: 480, w: 160, h: 60, type: 'database', icon: '🍃' },
+      { name: 'Order DB\n(PostgreSQL)', x: 650, y: 480, w: 160, h: 60, type: 'database', icon: '🗄️' },
+      { name: 'Payment DB\n(PostgreSQL)', x: 840, y: 480, w: 160, h: 60, type: 'database', icon: '🗄️' },
+      { name: 'Inventory DB\n(Redis)', x: 1030, y: 480, w: 160, h: 60, type: 'database', icon: '🔴' },
+      
+      // Infrastructure Services
+      { name: 'Message Queue\n(RabbitMQ)', x: 200, y: 600, w: 180, h: 70, type: 'infrastructure', icon: '📨' },
+      { name: 'Event Bus\n(Apache Kafka)', x: 420, y: 600, w: 180, h: 70, type: 'infrastructure', icon: '🚌' },
+      { name: 'Cache Layer\n(Redis)', x: 640, y: 600, w: 180, h: 70, type: 'infrastructure', icon: '⚡' },
+      
+      // Supporting Services
+      { name: 'Email Service', x: 100, y: 720, w: 160, h: 60, type: 'infrastructure', icon: '✉️' },
+      { name: 'SMS Service', x: 290, y: 720, w: 160, h: 60, type: 'infrastructure', icon: '📲' },
+      { name: 'Logging Service\n(ELK Stack)', x: 480, y: 720, w: 160, h: 60, type: 'infrastructure', icon: '📝' },
+      { name: 'Monitoring\n(Prometheus)', x: 670, y: 720, w: 160, h: 60, type: 'infrastructure', icon: '📈' },
+      { name: 'File Storage\n(AWS S3)', x: 860, y: 720, w: 160, h: 60, type: 'infrastructure', icon: '📁' },
+      { name: 'CDN Service', x: 1050, y: 720, w: 160, h: 60, type: 'infrastructure', icon: '🌍' }
+    ];
+
+    // Color schemes for different service types
+    const colorSchemes = {
+      client: {
+        gradient: ['#2196F3', '#21CBF3'],
+        border: '#1976D2',
+        shadow: 'rgba(33, 150, 243, 0.3)'
+      },
+      gateway: {
+        gradient: ['#4CAF50', '#8BC34A'],
+        border: '#388E3C',
+        shadow: 'rgba(76, 175, 80, 0.3)'
+      },
+      service: {
+        gradient: ['#FF9800', '#FFC107'],
+        border: '#F57C00',
+        shadow: 'rgba(255, 152, 0, 0.3)'
+      },
+      database: {
+        gradient: ['#9C27B0', '#E91E63'],
+        border: '#7B1FA2',
+        shadow: 'rgba(156, 39, 176, 0.3)'
+      },
+      infrastructure: {
+        gradient: ['#607D8B', '#795548'],
+        border: '#455A64',
+        shadow: 'rgba(96, 125, 139, 0.3)'
+      }
+    };
+
+    function createGradient(colors, x, y, w, h) {
+      const gradient = ctx.createLinearGradient(x, y, x + w, y + h);
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+      return gradient;
+    }
+
+    function drawRoundedRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawService(service) {
+      const colors = colorSchemes[service.type];
+      const x = service.x;
+      const y = service.y;
+      const w = service.w;
+      const h = service.h;
+      
+      // Shadow
+      ctx.fillStyle = colors.shadow;
+      drawRoundedRect(x + 3, y + 3, w, h, 10);
+      ctx.fill();
+      
+      // Main box with gradient
+      ctx.fillStyle = createGradient(colors.gradient, x, y, w, h);
+      drawRoundedRect(x, y, w, h, 10);
+      ctx.fill();
+      
+      // Border
+      ctx.strokeStyle = colors.border;
+      ctx.lineWidth = 2;
+      drawRoundedRect(x, y, w, h, 10);
+      ctx.stroke();
+      
+      // Icon
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(service.icon, x + w/2, y + 30);
+      
+      // Service name
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      
+      const lines = service.name.split('\n');
+      lines.forEach((line, index) => {
+        ctx.fillText(line, x + w/2, y + h - 25 + (index * 14));
+      });
+    }
+
+    function drawConnection(from, to, label = '', style = 'solid') {
+      const startX = from.x + from.w / 2;
+      const startY = from.y + from.h;
+      const endX = to.x + to.w / 2;
+      const endY = to.y;
+      
+      ctx.strokeStyle = '#2c3e50';
+      ctx.lineWidth = 2;
+      
+      if (style === 'dashed') {
+        ctx.setLineDash([8, 4]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      
+      // Curved connection for better visibility
+      const midY = startY + (endY - startY) / 2;
+      ctx.bezierCurveTo(startX, midY, endX, midY, endX, endY);
+      ctx.stroke();
+      
+      // Arrowhead
+      ctx.setLineDash([]);
+      const angle = Math.atan2(endY - midY, endX - startX);
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX - 10 * Math.cos(angle - Math.PI / 6), endY - 10 * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(endX - 10 * Math.cos(angle + Math.PI / 6), endY - 10 * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fillStyle = '#2c3e50';
+      ctx.fill();
+      
+      // Label
+      if (label) {
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = '#34495e';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, (startX + endX) / 2, midY - 5);
+      }
+    }
+
+    // Draw all services
+    services.forEach(drawService);
+    
+    // Define connections with improved routing
+    const connections = [
+      // Client to Load Balancer
+      { from: 0, to: 3, label: 'HTTPS' },
+      { from: 1, to: 3, label: 'HTTPS' },
+      { from: 2, to: 3, label: 'HTTPS' },
+      
+      // Load Balancer to API Gateway
+      { from: 3, to: 4, label: 'Route' },
+      
+      // API Gateway to Services
+      { from: 4, to: 5, label: 'Auth' },
+      { from: 4, to: 6, label: 'User' },
+      { from: 4, to: 7, label: 'Product' },
+      { from: 4, to: 8, label: 'Order' },
+      { from: 4, to: 9, label: 'Payment' },
+      { from: 4, to: 10, label: 'Inventory' },
+      
+      // Services to Databases
+      { from: 5, to: 11 },
+      { from: 6, to: 12 },
+      { from: 7, to: 13 },
+      { from: 8, to: 14 },
+      { from: 9, to: 15 },
+      { from: 10, to: 16 },
+      
+      // Services to Infrastructure (async communication)
+      { from: 8, to: 17, label: 'Events', style: 'dashed' },
+      { from: 9, to: 18, label: 'Events', style: 'dashed' },
+      { from: 7, to: 19, label: 'Cache', style: 'dashed' },
+      
+      // Infrastructure to Supporting Services
+      { from: 17, to: 20, label: 'Notify' },
+      { from: 17, to: 21, label: 'SMS' },
+      { from: 18, to: 22, label: 'Logs' },
+      { from: 18, to: 23, label: 'Metrics' }
+    ];
+    
+    // Draw connections
+    connections.forEach(conn => {
+      drawConnection(
+        services[conn.from], 
+        services[conn.to], 
+        conn.label || '', 
+        conn.style || 'solid'
+      );
+    });
+    
+    // Add title and layer labels
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = '#2c3e50';
+    ctx.textAlign = 'left';
+    
+    ctx.fillText('Presentation Layer', 20, 35);
+    ctx.fillText('Gateway Layer', 20, 135);
+    ctx.fillText('Business Logic Layer', 20, 345);
+    ctx.fillText('Data Layer', 20, 465);
+    ctx.fillText('Infrastructure Layer', 20, 585);
+    ctx.fillText('Supporting Services', 20, 705);
+  </script>
+</body>
+</html>

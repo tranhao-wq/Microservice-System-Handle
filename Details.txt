@@ -1,0 +1,23 @@
+Giải thích các thành phần chính
+
+Lớp Người Dùng (Client Layer)
+Ứng dụng Web và Di động là điểm truy cập duy nhất vào hệ thống
+Tất cả yêu cầu đều phải thông qua API Gateway
+
+API Gateway
+Xử lý xác thực cho mọi yêu cầu từ client
+Governance bao gồm rate limiting, routing, monitoring
+Đóng vai trò load balancer cho các microservice
+
+Các Microservice
+Mỗi service có nhiệm vụ riêng biệt và độc lập
+Sử dụng Message Broker (MQ) để giao tiếp async giữa các service
+Ví dụ: Khi tạo đơn hàng, Order Service sẽ gửi event đến Notification Service qua MQ
+
+Lớp Cơ sở dữ liệu
+Mỗi microservice có database riêng (PostgreSQL hoặc MongoDB tùy theo nhu cầu)
+Không chia sẻ cơ sở dữ liệu giữa các service
+PostgreSQL phù hợp cho dữ liệu transaction (Order, Payment)
+MongoDB phù hợp cho dữ liệu không cấu trúc (User profiles, Notifications)
+
+Hạ tầng

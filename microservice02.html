@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết kiến trúc Microservice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc; /* Tailwind's gray-50 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    canvas {
+      background: #fff;
+      border-radius: 0.75rem; /* Tailwind's rounded-xl */
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <canvas id="microserviceChart" width="1400" height="950"></canvas>
+
+  <script>
+    const canvas = document.getElementById('microserviceChart');
+    const ctx = canvas.getContext('2d');
+
+    // Enhanced color palette for better visuals
+    const colors = {
+      service: { bg: '#e0f2fe', border: '#38bdf8', text: '#0c4a6e' }, // light-blue
+      client: { bg: '#dcfce7', border: '#4ade80', text: '#166534' }, // green
+      gateway: { bg: '#ede9fe', border: '#a78bfa', text: '#5b21b6' }, // violet
+      db: { bg: '#fffbeb', border: '#facc15', text: '#854d0e' }, // amber
+      queue: { bg: '#fee2e2', border: '#f87171', text: '#991b1b' }, // red
+      async: { bg: '#f3e8ff', border: '#c084fc', text: '#6b21a8' }, // purple
+      infra: { bg: '#d1fae5', border: '#34d399', text: '#065f46' }, // emerald
+      arrow: '#4b5563', // gray-600
+      arrow_sync: '#2563eb', // blue-600
+      arrow_async: '#dc2626' // red-600
+    };
+
+    const boxes = [
+      // Tier 1: Client
+      { name: 'User Client', x: 600, y: 30, w: 200, h: 50, type: 'client' },
+
+      // Tier 2: Gateway
+      { name: 'API Gateway', x: 600, y: 120, w: 200, h: 50, type: 'gateway' },
+
+      // Tier 3: Infrastructure Services
+      { name: 'Service Discovery', x: 350, y: 220, w: 200, h: 50, type: 'infra' },
+      { name: 'Config Server', x: 850, y: 220, w: 200, h: 50, type: 'infra' },
+
+      // Tier 4: Core Services
+      { name: 'Auth Service', x: 200, y: 350, w: 200, h: 50, type: 'service' },
+      { name: 'Product Service', x: 450, y: 350, w: 200, h: 50, type: 'service' },
+      { name: 'Order Service', x: 700, y: 350, w: 200, h: 50, type: 'service' },
+      { name: 'Payment Service', x: 950, y: 350, w: 200, h: 50, type: 'service' },
+
+      // Tier 5: Databases
+      { name: 'Auth DB', x: 200, y: 440, w: 200, h: 45, type: 'db' },
+      { name: 'Product DB', x: 450, y: 440, w: 200, h: 45, type: 'db' },
+      { name: 'Order DB', x: 700, y: 440, w: 200, h: 45, type: 'db' },
+      { name: 'Payment DB', x: 950, y: 440, w: 200, h: 45, type: 'db' },
+
+      // Tier 6: Asynchronous Communication
+      { name: 'Message Queue', x: 600, y: 600, w: 200, h: 50, type: 'queue' },
+
+      // Tier 7: Asynchronous Services
+      { name: 'Email Service', x: 450, y: 720, w: 200, h: 50, type: 'async' },
+      { name: 'Logging Service', x: 700, y: 720, w: 200, h: 50, type: 'async' },
+    ];
+
+    function drawBox(box) {
+      const colorSet = colors[box.type] || colors.service;
+      ctx.fillStyle = colorSet.bg;
+      ctx.strokeStyle = colorSet.border;
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.roundRect(box.x, box.y, box.w, box.h, [10]);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = colorSet.text;
+      ctx.font = 'bold 14px Inter';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(box.name, box.x + box.w / 2, box.y + box.h / 2);
+    }
+
+    function drawArrow(fromBox, toBox, options = {}) {
+        const { label = "", dashed = false, color = colors.arrow, controlPoints = [], textOffset = -10 } = options;
+
+        const startX = fromBox.x + fromBox.w / 2;
+        const startY = fromBox.y + fromBox.h;
+        const endX = toBox.x + toBox.w / 2;
+        const endY = toBox.y;
+
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+
+        if (controlPoints.length === 2) {
+             ctx.quadraticCurveTo(controlPoints[0], controlPoints[1], endX, endY);
+        } else if (controlPoints.length === 4) {
+             ctx.bezierCurveTo(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], endX, endY);
+        } else {
+             ctx.lineTo(endX, endY);
+        }
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        if (dashed) {
+            ctx.setLineDash([5, 5]);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Arrowhead
+        let lastP = (controlPoints.length > 0) ? {x: controlPoints[controlPoints.length - 2], y: controlPoints[controlPoints.length - 1]} : {x: startX, y: startY};
+        const angle = Math.atan2(endY - lastP.y, endX - lastP.x);
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - 10 * Math.cos(angle - Math.PI / 6), endY - 10 * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - 10 * Math.cos(angle + Math.PI / 6), endY - 10 * Math.sin(angle + Math.PI / 6));
+        ctx.strokeStyle = color;
+        ctx.stroke();
+
+        if (label) {
+            ctx.font = "italic 13px Inter";
+            ctx.fillStyle = "#1e293b";
+            ctx.textAlign = 'center';
+            const midX = (startX + endX) / 2;
+            const midY = (startY + endY) / 2;
+            ctx.fillText(label, midX, midY + textOffset);
+        }
+    }
+    
+    // --- Main Drawing Logic ---
+    boxes.forEach(drawBox);
+
+    // --- Draw Connections ---
+    // Tier 1 -> 2: Client to Gateway
+    drawArrow(boxes[0], boxes[1], { label: "HTTP Request" });
+
+    // Tier 2 -> 3: Gateway to Infra
+    drawArrow(boxes[1], boxes[2], { label: "Tra cứu Service", controlPoints: [650, 170, 450, 220] });
+
+    // Tier 2 -> 4: Gateway to Services
+    drawArrow(boxes[1], boxes[4], { label: "Xác thực", controlPoints: [650, 170, 300, 250, 300, 350] });
+    drawArrow(boxes[1], boxes[5], { controlPoints: [700, 170, 550, 250, 550, 350] }); // to Product
+    drawArrow(boxes[1], boxes[6], { controlPoints: [700, 170, 800, 250, 800, 350] }); // to Order
+    
+    // Tier 4 -> 3: Services register with Discovery and get Config
+    [boxes[4], boxes[5], boxes[6], boxes[7]].forEach((serviceBox, i) => {
+        // Register with Service Discovery
+        drawArrow(serviceBox, boxes[2], { label: "Đăng ký", dashed: true, color: colors.infra.border, controlPoints: [serviceBox.x + 50, serviceBox.y, serviceBox.x + 50, 270] });
+        // Get config from Config Server
+        drawArrow(serviceBox, boxes[3], { label: "Lấy cấu hình", dashed: true, color: colors.infra.border, controlPoints: [serviceBox.x + 150, serviceBox.y, serviceBox.x + 150, 270] });
+    });
+
+    // Tier 4 -> 5: Services to Databases
+    drawArrow(boxes[4], boxes[8]); // Auth
+    drawArrow(boxes[5], boxes[9]); // Product
+    drawArrow(boxes[6], boxes[10]); // Order
+    drawArrow(boxes[7], boxes[11]); // Payment
+
+    // Tier 4 -> 4: Inter-service communication
+    drawArrow(boxes[6], boxes[5], { label: "Kiểm tra tồn kho", color: colors.arrow_sync, controlPoints: [700, 375, 650, 375] });
+    drawArrow(boxes[6], boxes[7], { label: "Xử lý thanh toán", color: colors.arrow_sync, controlPoints: [900, 400, 950, 400] });
+
+    // Tier 4 -> 6: Asynchronous events
+    drawArrow(boxes[6], boxes[12], { label: "Gửi sự kiện Order", dashed: true, color: colors.arrow_async, controlPoints: [800, 490, 700, 600] });
+    drawArrow(boxes[7], boxes[12], { label: "Gửi sự kiện Payment", dashed: true, color: colors.arrow_async, controlPoints: [1050, 490, 800, 600] });
+
+    // Tier 6 -> 7: Message Queue Consumers
+    drawArrow(boxes[12], boxes[13], { label: "Gửi email", dashed: true, color: colors.arrow_async, controlPoints: [600, 650, 550, 720] });
+    drawArrow(boxes[12], boxes[14], { label: "Ghi log", dashed: true, color: colors.arrow_async, controlPoints: [800, 650, 750, 720] });
+
+  </script>
+</body>
+</html>

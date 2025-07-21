@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết kiến trúc Microservice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc; /* Tailwind's gray-50 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    canvas {
+      background: #fff;
+      border-radius: 0.75rem; /* Tailwind's rounded-xl */
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <canvas id="microserviceChart" width="1200" height="700"></canvas>
+
+  <script>
+    const canvas = document.getElementById('microserviceChart');
+    const ctx = canvas.getContext('2d');
+
+    // Enhanced color palette for better visuals
+    const colors = {
+      service: { bg: '#e0f2fe', border: '#38bdf8', text: '#0c4a6e' }, // light-blue-100, sky-400, sky-900
+      client: { bg: '#dcfce7', border: '#4ade80', text: '#166534' }, // green-100, green-400, green-800
+      gateway: { bg: '#ede9fe', border: '#a78bfa', text: '#5b21b6' }, // violet-100, violet-400, violet-800
+      db: { bg: '#fffbeb', border: '#facc15', text: '#854d0e' }, // amber-100, yellow-400, amber-800
+      queue: { bg: '#fee2e2', border: '#f87171', text: '#991b1b' }, // red-100, red-400, red-900
+      async: { bg: '#f3e8ff', border: '#c084fc', text: '#6b21a8' }, // purple-100, purple-400, purple-800
+      arrow: '#4b5563' // gray-600
+    };
+
+    const boxes = [
+      // Tier 1: Client
+      { name: 'User Client', x: 500, y: 30, w: 200, h: 50, type: 'client' },
+
+      // Tier 2: Gateway
+      { name: 'API Gateway', x: 500, y: 120, w: 200, h: 50, type: 'gateway' },
+
+      // Tier 3: Core Services
+      { name: 'Auth Service', x: 175, y: 240, w: 180, h: 50, type: 'service' },
+      { name: 'Product Service', x: 385, y: 240, w: 180, h: 50, type: 'service' },
+      { name: 'Order Service', x: 595, y: 240, w: 180, h: 50, type: 'service' },
+      { name: 'Payment Service', x: 805, y: 240, w: 180, h: 50, type: 'service' },
+
+      // Tier 4: Databases
+      { name: 'Auth DB', x: 175, y: 330, w: 180, h: 45, type: 'db' },
+      { name: 'Product DB', x: 385, y: 330, w: 180, h: 45, type: 'db' },
+      { name: 'Order DB', x: 595, y: 330, w: 180, h: 45, type: 'db' },
+      { name: 'Payment DB', x: 805, y: 330, w: 180, h: 45, type: 'db' },
+
+      // Tier 5: Asynchronous Communication
+      { name: 'Message Queue', x: 500, y: 440, w: 200, h: 50, type: 'queue' },
+
+      // Tier 6: Asynchronous Services
+      { name: 'Email Service', x: 385, y: 550, w: 180, h: 50, type: 'async' },
+      { name: 'Logging Service', x: 595, y: 550, w: 180, h: 50, type: 'async' },
+    ];
+
+    function drawBox(box) {
+      const colorSet = colors[box.type] || colors.service;
+      ctx.fillStyle = colorSet.bg;
+      ctx.strokeStyle = colorSet.border;
+      ctx.lineWidth = 1.5;
+
+      // Draw rounded rectangle
+      ctx.beginPath();
+      ctx.moveTo(box.x + 10, box.y);
+      ctx.lineTo(box.x + box.w - 10, box.y);
+      ctx.quadraticCurveTo(box.x + box.w, box.y, box.x + box.w, box.y + 10);
+      ctx.lineTo(box.x + box.w, box.y + box.h - 10);
+      ctx.quadraticCurveTo(box.x + box.w, box.y + box.h, box.x + box.w - 10, box.y + box.h);
+      ctx.lineTo(box.x + 10, box.y + box.h);
+      ctx.quadraticCurveTo(box.x, box.y + box.h, box.x, box.y + box.h - 10);
+      ctx.lineTo(box.x, box.y + 10);
+      ctx.quadraticCurveTo(box.x, box.y, box.x + 10, box.y);
+      ctx.closePath();
+
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw text
+      ctx.fillStyle = colorSet.text;
+      ctx.font = 'bold 14px Inter';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(box.name, box.x + box.w / 2, box.y + box.h / 2);
+    }
+
+    function drawArrow(fromBox, toBox, options = {}) {
+        const { label = "", dashed = false, controlYOffset = 50, side = 'none' } = options;
+
+        let startX, startY, endX, endY;
+
+        // Default: bottom to top
+        startX = fromBox.x + fromBox.w / 2;
+        startY = fromBox.y + fromBox.h;
+        endX = toBox.x + toBox.w / 2;
+        endY = toBox.y;
+
+        // Handle side connections for API Gateway -> Services
+        if (side === 'downward-curve') {
+            startX = fromBox.x + fromBox.w / 2;
+            startY = fromBox.y + fromBox.h;
+            endX = toBox.x + toBox.w / 2;
+            endY = toBox.y;
+        } else if (side === 'left') {
+            startX = fromBox.x;
+            startY = fromBox.y + fromBox.h / 2;
+            endX = toBox.x + toBox.w;
+            endY = toBox.y + toBox.h / 2;
+        } else if (side === 'right') {
+            startX = fromBox.x + fromBox.w;
+            startY = fromBox.y + fromBox.h / 2;
+            endX = toBox.x;
+            endY = toBox.y + toBox.h / 2;
+        }
+
+
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+
+        // Use quadratic curve for a smoother look
+        if (side === 'downward-curve') {
+             const cp1x = startX;
+             const cp1y = startY + controlYOffset;
+             const cp2x = endX;
+             const cp2y = endY - controlYOffset;
+             ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+        } else {
+             ctx.lineTo(endX, endY);
+        }
+
+
+        ctx.strokeStyle = colors.arrow;
+        ctx.lineWidth = 2;
+        if (dashed) {
+            ctx.setLineDash([5, 5]);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset line dash
+
+        // Arrowhead
+        const angle = Math.atan2(endY - (startY + controlYOffset), endX - startX);
+        let headAngle1 = angle + Math.PI / 6;
+        let headAngle2 = angle - Math.PI / 6;
+        if (side !== 'downward-curve') {
+            const directAngle = Math.atan2(endY - startY, endX - startX);
+            headAngle1 = directAngle + Math.PI / 6;
+            headAngle2 = directAngle - Math.PI / 6;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - 10 * Math.cos(headAngle1), endY - 10 * Math.sin(headAngle1));
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - 10 * Math.cos(headAngle2), endY - 10 * Math.sin(headAngle2));
+        ctx.stroke();
+
+
+        if (label) {
+            ctx.font = "italic 12px Inter";
+            ctx.fillStyle = "#1e293b"; // slate-800
+            ctx.textAlign = 'center';
+            ctx.fillText(label, (startX + endX) / 2, (startY + endY) / 2 - 10);
+        }
+    }
+
+    // --- Main Drawing Logic ---
+    boxes.forEach(drawBox);
+
+    // --- Draw Connections ---
+    // User Client -> API Gateway
+    drawArrow(boxes[0], boxes[1]);
+
+    // API Gateway -> Core Services (with curved lines for better separation)
+    drawArrow(boxes[1], boxes[2], { side: 'downward-curve', controlYOffset: 40 });
+    drawArrow(boxes[1], boxes[3], { side: 'downward-curve', controlYOffset: 60 });
+    drawArrow(boxes[1], boxes[4], { side: 'downward-curve', controlYOffset: 60 });
+    drawArrow(boxes[1], boxes[5], { side: 'downward-curve', controlYOffset: 40 });
+
+    // Services -> Databases
+    drawArrow(boxes[2], boxes[6]); // Auth
+    drawArrow(boxes[3], boxes[7]); // Product
+    drawArrow(boxes[4], boxes[8]); // Order
+    drawArrow(boxes[5], boxes[9]); // Payment
+
+    // Order Service -> Message Queue (Asynchronous event)
+    drawArrow(boxes[4], boxes[10], { label: "Gửi sự kiện", dashed: true, controlYOffset: 40 });
+
+    // Message Queue -> Async Services
+    drawArrow(boxes[10], boxes[11], { label: "Gửi email thông báo", dashed: true, controlYOffset: 50 });
+    drawArrow(boxes[10], boxes[12], { label: "Ghi log sự kiện", dashed: true, controlYOffset: 50 });
+
+  </script>
+</body>
+</html>
